@@ -96,7 +96,7 @@ app.post('/api/users', asyncHandler(async (req,res) =>{
     })
     if(!existing){
     await User.create(user);
-    res.status(201).location('/api/users/' + user.id).end()
+    res.status(201).location('/').end()
     }else{
       res.status(400).json({"Error" : "Email address is already registered"})
     }
@@ -126,7 +126,11 @@ app.get('/api/courses', asyncHandler(async(req,res) =>{
 app.get('/api/courses/:id', asyncHandler(async(req,res) => {
   const course = await Course.findAll({
     where: {id: req.params.id}, 
-    include: [{model: User}]
+    attributes: ["id", "userId", "title", "description", "estimatedTime", "materialsNeeded"],
+    include: [{
+      model: User,
+      attributes: ["id", "firstName", "lastName", "emailAddress"],
+    }]
   });
   res.json(course);
 }))
@@ -136,7 +140,7 @@ app.post('/api/courses', authenticateUser, asyncHandler(async(req,res)=>{
   let course;
   try{
     course = await Course.create(req.body);
-    res.status(201).location('/api/courses/' + course.id).end()
+    res.status(201).location('/').end()
   } catch(error){
     if(error.name === "SequelizeValidationError") {
       console.log(req.body);
@@ -156,7 +160,7 @@ app.delete('/api/users/:id', authenticateUser, asyncHandler(async(req,res) =>{
     await user.destroy();
     res.status(204).end()
     } else {
-      res.status(203).json({"Error" : "You are not authorized to delete this user"})
+      res.status(403).json({"Error" : "You are not authorized to delete this user"})
     }
   } else {
     res.status(404).end();
@@ -172,7 +176,7 @@ app.put('/api/courses/:id', authenticateUser, asyncHandler(async(req,res) =>{
     await course.update(req.body)
     res.status(204).end()
     }else{
-      res.status(203).json({"Error" : "You are not authorized to edit this course"})
+      res.status(403).json({"Error" : "You are not authorized to edit this course"})
   }}
   }catch(error){
     if(error.name === "SequelizeValidationError") {
@@ -192,7 +196,7 @@ app.delete('/api/courses/:id', authenticateUser, asyncHandler(async(req,res) =>{
        await course.destroy();
        res.status(204).end()
      }else{
-      res.status(203).json({"Error" : "You are not authorized to delete this course"})
+      res.status(403).json({"Error" : "You are not authorized to delete this course"})
      }
   } else {
     res.status(404).end();
