@@ -5,7 +5,7 @@ const express = require('express');
 const morgan = require('morgan');
 const bcryptjs = require('bcryptjs');
 const auth = require('basic-auth');
-const { Op } = require('sequelize');
+const { Op, json } = require('sequelize');
 
 // variable to enable global error logging
 const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'true';
@@ -83,22 +83,27 @@ app.get('/api/users', authenticateUser, asyncHandler(async(req,res) => {
 
 //Post route to post a new user
 app.post('/api/users', asyncHandler(async (req,res) =>{
+  let existing;
   let user;
   try{
-    user = (req.body);
-    user.password = bcryptjs.hashSync(user.password);
-    const existing = await User.findOne({
-      where: {
-        emailAddress: {
-          [Op.eq] : user.emailAddress
+    user = req.body;
+    if(user.password){
+      user.password = bcryptjs.hashSync(user.password);
+    }
+    if(user.emailAddress){
+       existing = await User.findOne({
+        where: {
+          emailAddress: {
+            [Op.eq] : user.emailAddress
+          }
         }
-      }
-    })
+      })
+    }
     if(!existing){
-    await User.create(user);
-    res.status(201).location('/').end()
-    }else{
-      res.status(400).json({"Error" : "Email address is already registered"})
+      await User.create(user);
+      res.status(201).location('/').end()
+    } else {
+      res.status(400).json({"Error": "Woops, that email already exists"})
     }
   } catch(error){
     if(error.name === "SequelizeValidationError") {
@@ -108,6 +113,7 @@ app.post('/api/users', asyncHandler(async (req,res) =>{
       throw error
     }
   }
+  
 }))
 
 //returns a list of all courses
@@ -140,7 +146,7 @@ app.post('/api/courses', authenticateUser, asyncHandler(async(req,res)=>{
   let course;
   try{
     course = await Course.create(req.body);
-    res.status(201).location('/').end()
+    res.status(201).location('/api/courses/' + course.id).end()
   } catch(error){
     if(error.name === "SequelizeValidationError") {
       console.log(req.body);
