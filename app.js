@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const bcryptjs = require('bcryptjs');
 const auth = require('basic-auth');
 const { Op, json } = require('sequelize');
+const { body, validationResult } = require('express-validator');
 
 // variable to enable global error logging
 const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'true';
@@ -174,23 +175,33 @@ app.delete('/api/users/:id', authenticateUser, asyncHandler(async(req,res) =>{
 }))
 
 // PUT /api/courses/:id 204 - Updates a course and returns no content
-app.put('/api/courses/:id', authenticateUser, asyncHandler(async(req,res) =>{
-  try{
-  let course = await Course.findByPk(req.params.id)
-  if(course){
-    if(course.userId === req.currentUser.id){
-    await course.update(req.body)
-    res.status(204).end()
-    }else{
-      res.status(403).json({"Error" : "You are not authorized to edit this course"})
-  }}
-  }catch(error){
-    if(error.name === "SequelizeValidationError") {
-    res.json({"Error":error.message})
-    } else {
-      throw error
+app.put('/api/courses/:id', authenticateUser, [
+   body("title").notEmpty().withMessage("Please enter a title"),
+   body("description").notEmpty().withMessage("Please enter a description")
+  ], asyncHandler(async(req,res) =>{
+    try{
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        const errorArray = errors.array();
+        const message = errorArray.map(error => error.msg)
+        return res.status(400).json({ Error : message });
+      }
+    let course = await Course.findByPk(req.params.id)
+    if(course){
+      if(course.userId === req.currentUser.id){
+      await course.update(req.body)
+      res.status(204).end()
+        }
+      }else{
+        res.status(403).json({"Error" : "You are not authorized to edit this course"})
     }
-  }
+    }catch(error){
+      if(error.name === "SequelizeValidationError") {
+      res.json({"Error":error.message})
+      } else {
+        throw error
+      }
+    }
 }))
 
 // DELETE /api/courses/:id 204 - Deletes a course and returns no content
