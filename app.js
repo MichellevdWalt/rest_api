@@ -180,22 +180,24 @@ app.put('/api/courses/:id', authenticateUser, [
    body("description").notEmpty().withMessage("Please enter a description")
   ], asyncHandler(async(req,res) =>{
     try{
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        const errorArray = errors.array();
-        const message = errorArray.map(error => error.msg)
-        return res.status(400).json({ Error : message });
-      }
-    let course = await Course.findByPk(req.params.id)
-    if(course){
-      if(course.userId === req.currentUser.id){
-      await course.update(req.body)
-      res.status(204).end()
+      
+      let course = await Course.findByPk(req.params.id)
+      if(course){
+        if(course.userId === req.currentUser.id){
+          const errors = validationResult(req);
+          if (!errors.isEmpty()) {
+            const errorArray = errors.array();
+            const message = errorArray.map(error => error.msg)
+            return res.status(400).json({ Error : message });
+          } else {
+            await course.update(req.body)
+            res.status(204).end()
+          }
+        }else{
+          res.status(403).json({"Error" : "You are not authorized to edit this course"})
         }
-      }else{
-        res.status(403).json({"Error" : "You are not authorized to edit this course"})
-    }
-    }catch(error){
+      } 
+   }catch(error){
       if(error.name === "SequelizeValidationError") {
       res.json({"Error":error.message})
       } else {
